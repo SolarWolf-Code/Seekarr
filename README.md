@@ -32,13 +32,12 @@ export DISCORD_TOKEN=1234567890
 
 export RADARR_URL=http://localhost:7878
 export RADARR_API_KEY=1234567890
-export RADARR_COMMAND_2=request-movie,/media/movies,4k
+export RADARR_COMMAND_1=request-movie,/media/movies,4k
 
 export SONARR_URL=http://localhost:8989
 export SONARR_API_KEY=1234567890
 export SONARR_COMMAND_1=request-tv,/media/tv,4K
 ```
-
 
 ## TODO
 - Add `In Theaters` field to embed

@@ -39,12 +39,19 @@ def sync_commands(command_type: str, command: list, config: dict[str, str]):
             await interaction.response.send_message(f"No item found with the name \"{title}\". Please make sure you spelled it correctly.")
 
     print(f"Added command: {command.name}")
-    tree.command(name=command.name)(command_func)
+    if guild_id:
+        tree.command(name=command.name, guild=guild_id)(command_func)
+    else:
+        tree.command(name=command.name)(command_func)
 
 
 @client.event
 async def on_ready():
-    await tree.sync()
+    if guild_id:
+        await tree.sync(guild=discord.Object(id=guild_id))
+    else:
+        await tree.sync()
+
     print("Seekarr is online!")
 
 def add_commands(command_type: str):

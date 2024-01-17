@@ -23,9 +23,13 @@ To add any number of commands to the bot, you'll need to prefix the instance typ
 - Root Folder Path - the root folder path for the command (e.g. `/media/movies`)
 - Quality Profile Name - the quality profile name for the command (e.g. `4K`)
 
+Lastly, if you'd like to only run this in a single server, you can provide the following variable:
+- `GUILD_ID` - The ID of the guild you'd like to run the bot in
+
 ### Example
 ``` shell
 export DISCORD_TOKEN=1234567890
+
 export RADARR_URL=http://localhost:7878
 export RADARR_API_KEY=1234567890
 export RADARR_COMMAND_2=request-movie,/media/movies,4k

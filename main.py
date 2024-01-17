@@ -11,7 +11,7 @@ from sonarr import SeriesSelectView, get_series
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
 tree = discord.app_commands.CommandTree(client)
-
+guild_id = None
 
 @dataclass
 class Command:
@@ -68,6 +68,10 @@ if __name__ == "__main__":
         discord_token = os.environ["DISCORD_TOKEN"]
     except KeyError:
         raise Exception("DISCORD_TOKEN environment variable not set. Please set it to your discord bot token.")
+
+    if os.environ.get("GUILD_ID"):
+        guild_id = int(os.environ["GUILD_ID"])
+
     add_commands("SONARR")
     add_commands("RADARR")
 

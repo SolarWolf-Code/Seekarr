@@ -25,13 +25,13 @@ def sync_commands(command_type: str, command: list, config: dict[str, str]):
     elif command_type == "RADARR":
         radarr = RadarrAPI(config["url"], config["api_key"])
 
-    async def command_func(interaction, title: str, quality_profile: Optional[str] = command.qualityprofile, root_folder_path: Optional[str] = command.rootfolderpath):
+    async def command_func(interaction, title: str):
         if command_type == "SONARR":
             entries = get_series(title, sonarr)
-            view = SeriesSelectView(series_found=entries, quality_profile=quality_profile, root_folder_path=root_folder_path)
+            view = SeriesSelectView(series_found=entries, quality_profile=command.qualityprofile, root_folder_path=command.rootfolderpath)
         elif command_type == "RADARR":
             entries = get_movie(title, radarr)
-            view = MovieSelectView(movies_found=entries, quality_profile=quality_profile, root_folder_path=root_folder_path)
+            view = MovieSelectView(movies_found=entries, quality_profile=command.qualityprofile, root_folder_path=command.rootfolderpath)
 
         if entries:
             await interaction.response.send_message(f"Select an item", view=view)

@@ -40,7 +40,7 @@ def sync_commands(command_type: str, command: list, config: dict[str, str]):
 
     print(f"Added command: {command.name}")
     if guild_id:
-        tree.command(name=command.name, guild=guild_id)(command_func)
+        tree.command(name=command.name, guild=discord.Object(id=guild_id))(command_func)
     else:
         tree.command(name=command.name)(command_func)
 

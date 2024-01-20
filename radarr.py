@@ -1,5 +1,6 @@
 import discord
 from pyarr import RadarrAPI
+from utils import NotificationAgent, notification_agents
 
 radarr = None
 
@@ -10,10 +11,11 @@ def get_movie(title: str, radarr_instance: RadarrAPI):
     return movies[:25]
 
 class RequestButton(discord.ui.Button):
-    def __init__(self, movie, quality_profile, root_folder_path):
+    def __init__(self, movie, quality_profile, root_folder_path, embed):
         self.movie = movie
         self.quality_profile = quality_profile
         self.root_folder_path = root_folder_path
+        self.embed = embed
         super().__init__(label='Request', style=discord.ButtonStyle.primary)
 
     async def callback(self, interaction: discord.Interaction):
@@ -23,10 +25,16 @@ class RequestButton(discord.ui.Button):
         quality_profiles = radarr.get_quality_profile()
         quality_profile_id = int(next(profile["id"] for profile in quality_profiles if profile["name"] == self.quality_profile))
 
-        radarr.add_movie(self.movie, quality_profile_id=quality_profile_id, root_dir=self.root_folder_path)
+        radarr.add_movie(self.movie, quality_profile_id=quality_profile_id, root_dir=self.root_folder_path, search_for_movie=False)
 
         self.label = "Requested"
         self.disabled = True
+
+        agent = NotificationAgent(instance_type="Radarr")
+        agent.info = self.movie
+        agent.add_member(interaction.user, interaction.channel_id)
+        agent.embed = self.embed
+        notification_agents.append(agent)
 
         await interaction.message.edit(content=f"Successfully requested {self.movie['title']}!", view=self.view)
 
@@ -86,7 +94,7 @@ class SelectMenu(discord.ui.Select):
             await interaction.response.edit_message(content=f"{selected_movie_info['title']} was already requested. Please wait for it to be available", embed=embed, view=self.view)
         else:
             # this means it is not requested or downloaded.
-            button = RequestButton(selected_movie_info, self.quality_profile, self.root_folder_path)
+            button = RequestButton(selected_movie_info, self.quality_profile, self.root_folder_path, embed)
             self.view.add_item(button)
             await interaction.response.edit_message(content=f"{selected_movie_info['title']} is not downloaded or requested. Would you like to request it?", embed=embed, view=self.view)
             

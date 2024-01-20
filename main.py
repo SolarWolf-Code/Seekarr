@@ -1,17 +1,13 @@
 import os
 from dataclasses import dataclass
-from typing import Optional
+import asyncio
 
 import discord
 from pyarr import RadarrAPI, SonarrAPI
 
 from radarr import MovieSelectView, get_movie
 from sonarr import SeriesSelectView, get_series
-
-intents = discord.Intents.default()
-client = discord.Client(intents=intents)
-tree = discord.app_commands.CommandTree(client)
-guild_id = None
+from utils import notification_agents
 
 @dataclass
 class Command:
@@ -19,11 +15,53 @@ class Command:
     rootfolderpath: str
     qualityprofile: str
 
+
+intents = discord.Intents.default()
+client = discord.Client(intents=intents)
+tree = discord.app_commands.CommandTree(client)
+guild_id = None
+
+radarr = None
+sonarr = None
+
+def check_movie_downloaded(movie_info: dict) -> bool:
+    movie = radarr.get_movie(id_=movie_info["tmdbId"], tmdb=True)[0]
+    if movie["hasFile"]:
+        return True
+
+    return False
+
+
+async def check_downloads():
+    while True:
+        print(f"Checking downloads | {len(notification_agents)}")
+        await asyncio.sleep(5)
+        for agent in notification_agents:
+            if agent.instance_type == "Radarr":
+                print(f"Checking {agent.info['title']}")
+                if check_movie_downloaded(agent.info):
+                    # send message to each channel. include all users in message for that given channel
+                    for channel_id, members in agent.notified_members.items():
+                        channel = client.get_channel(channel_id)
+                        members_to_mention = " ".join([member.mention for member in members])
+                        await channel.send(content=f"{members_to_mention} {agent.info['title']} has finished downloading!", embed=agent.embed)
+
+                    notification_agents.remove(agent)
+
+            elif agent.instance_type == "Sonarr":
+                # TODO: check if series is downloaded
+                pass
+
 def sync_commands(command_type: str, command: list, config: dict[str, str]):
+    global sonarr
+    global radarr
+
     if command_type == "SONARR":
-        sonarr = SonarrAPI(config["url"], config["api_key"])
+        if not sonarr:
+            sonarr = SonarrAPI(config["url"], config["api_key"])
     elif command_type == "RADARR":
-        radarr = RadarrAPI(config["url"], config["api_key"])
+        if not radarr:
+            radarr = RadarrAPI(config["url"], config["api_key"])
 
     async def command_func(interaction, title: str):
         if command_type == "SONARR":
@@ -51,6 +89,9 @@ async def on_ready():
         await tree.sync(guild=discord.Object(id=guild_id))
     else:
         await tree.sync()
+
+    # create new task to check downloads
+    asyncio.create_task(check_downloads())
 
     print("Seekarr is online!")
 

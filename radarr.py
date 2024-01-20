@@ -87,11 +87,27 @@ class SelectMenu(discord.ui.Select):
             self.view.add_item(button)
             await interaction.response.edit_message(content=f"{selected_movie_info['title']} has already been downloaded. Enjoy!", embed=embed, view=self.view)
         elif selected_movie_info["monitored"]:
-            # this means it is already requested.
-            button = discord.ui.Button(label='Requested', style=discord.ButtonStyle.primary)
-            button.disabled = True
-            self.view.add_item(button)
-            await interaction.response.edit_message(content=f"{selected_movie_info['title']} was already requested. Please wait for it to be available", embed=embed, view=self.view)
+            # check if the user is already in the notification agent list
+            agent = next((agent for agent in notification_agents if agent.info["tmdbId"] == selected_movie_info["tmdbId"]), None)
+            if agent:
+                if interaction.user not in agent.notified_members[interaction.channel_id]:
+                    agent.add_member(interaction.user, interaction.channel_id)
+                    await interaction.response.edit_message(content=f"{selected_movie_info['title']} is already requested. You will be notified when it is available.", embed=embed, view=self.view)
+                else:
+                    await interaction.response.edit_message(content=f"{selected_movie_info['title']} is already requested. You will be notified when it is available.", embed=embed, view=self.view)
+
+            else:
+                # this means it was already requests but the bot likely lost connection and the notification agent was removed.
+                agent = NotificationAgent(instance_type="Radarr")
+                agent.info = selected_movie_info
+                agent.add_member(interaction.user, interaction.channel_id)
+                agent.embed = embed
+                notification_agents.append(agent)
+
+                button = discord.ui.Button(label='Requested', style=discord.ButtonStyle.primary)
+                button.disabled = True
+                self.view.add_item(button)
+                await interaction.response.edit_message(content=f"{selected_movie_info['title']} was already requested. Please wait for it to be available", embed=embed, view=self.view)
         else:
             # this means it is not requested or downloaded.
             button = RequestButton(selected_movie_info, self.quality_profile, self.root_folder_path, embed)

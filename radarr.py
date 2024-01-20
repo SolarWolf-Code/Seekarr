@@ -1,6 +1,7 @@
 import discord
 from pyarr import RadarrAPI
-from utils import NotificationAgent, notification_agents
+
+from notifications import NotificationAgent, notification_agents
 
 radarr = None
 
@@ -9,6 +10,13 @@ def get_movie(title: str, radarr_instance: RadarrAPI):
     radarr = radarr_instance
     movies = radarr.lookup_movie(term=title)
     return movies[:25]
+
+def check_movie_downloaded(movie_info: dict) -> bool:
+    movie = radarr.get_movie(id_=movie_info["tmdbId"], tmdb=True)[0]
+    if movie["hasFile"]:
+        return True
+
+    return False
 
 class RequestButton(discord.ui.Button):
     def __init__(self, movie, quality_profile, root_folder_path, embed):
@@ -36,7 +44,7 @@ class RequestButton(discord.ui.Button):
         agent.embed = self.embed
         notification_agents.append(agent)
 
-        await interaction.message.edit(content=f"Successfully requested {self.movie['title']}!", view=self.view)
+        await interaction.message.edit(content=f"Successfully requested **{self.movie['title']}**!", view=self.view)
 
 
 class SelectMenu(discord.ui.Select):
@@ -63,7 +71,7 @@ class SelectMenu(discord.ui.Select):
                 description = selected_movie_info["overview"]
 
         embed = discord.Embed(
-            title=f"{selected_movie_info['title']} ({selected_movie_info['year']})",
+            title=f"{selected_movie_info['title']}",
             url=f"https://www.themoviedb.org/movie/{selected_movie_info['tmdbId']}",
             description=description,
             color=0x3498db
@@ -80,12 +88,12 @@ class SelectMenu(discord.ui.Select):
             if isinstance(item, discord.ui.Button):
                 self.view.remove_item(item)
 
-        if selected_movie_info["hasFile"]:
+        if check_movie_downloaded(selected_movie_info):
             # this means it is already downloaded.
             button = discord.ui.Button(label='Available', style=discord.ButtonStyle.primary)
             button.disabled = True
             self.view.add_item(button)
-            await interaction.response.edit_message(content=f"{selected_movie_info['title']} has already been downloaded. Enjoy!", embed=embed, view=self.view)
+            await interaction.response.edit_message(content=f"**{selected_movie_info['title']}** has already been downloaded. Enjoy!", embed=embed, view=self.view)
         elif selected_movie_info["monitored"]:
             # check if the user is already in the notification agent list
             agent = next((agent for agent in notification_agents if agent.info["tmdbId"] == selected_movie_info["tmdbId"]), None)
@@ -93,7 +101,7 @@ class SelectMenu(discord.ui.Select):
                 if interaction.user not in agent.notified_members[interaction.channel_id]:
                     agent.add_member(interaction.user, interaction.channel_id)
 
-                await interaction.response.edit_message(content=f"{selected_movie_info['title']} is already requested. You will be notified when it is available.", embed=embed, view=self.view)
+                await interaction.response.edit_message(content=f"**{selected_movie_info['title']}** is already requested. You will be notified when it is available.", embed=embed, view=self.view)
 
             else:
                 # this means it was already requests but the bot likely lost connection and the notification agent was removed.
@@ -106,12 +114,12 @@ class SelectMenu(discord.ui.Select):
                 button = discord.ui.Button(label='Requested', style=discord.ButtonStyle.primary)
                 button.disabled = True
                 self.view.add_item(button)
-                await interaction.response.edit_message(content=f"{selected_movie_info['title']} was already requested. Please wait for it to be available", embed=embed, view=self.view)
+                await interaction.response.edit_message(content=f"**{selected_movie_info['title']}** was already requested. Please wait for it to be available", embed=embed, view=self.view)
         else:
             # this means it is not requested or downloaded.
             button = RequestButton(selected_movie_info, self.quality_profile, self.root_folder_path, embed)
             self.view.add_item(button)
-            await interaction.response.edit_message(content=f"{selected_movie_info['title']} is not downloaded or requested. Would you like to request it?", embed=embed, view=self.view)
+            await interaction.response.edit_message(content=f"**{selected_movie_info['title']}** is not downloaded or requested. Would you like to request it?", embed=embed, view=self.view)
             
 class MovieSelectView(discord.ui.View):
     def __init__(self, *, timeout = 180, movies_found, quality_profile, root_folder_path):

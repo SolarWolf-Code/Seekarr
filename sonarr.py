@@ -1,6 +1,8 @@
 import discord
 from pyarr import SonarrAPI
 
+from notifications import NotificationAgent, notification_agents
+
 sonarr = None
 
 def get_series(title: str, sonarr_instance: SonarrAPI):
@@ -16,14 +18,36 @@ def series_already_monitored(tvdbid: int):
     
     return False
 
+def create_notification_agent(series: dict, season: int, embed: discord.Embed, interaction: discord.Interaction):
+    existing_agent = next((agent for agent in notification_agents if agent.info["tvdbId"] == series["tvdbId"] and agent.season == season), None)
+    if not existing_agent:
+        agent = NotificationAgent(instance_type="Sonarr")
+        agent.info = series
+        agent.embed = embed
+        agent.season = season
+        agent.add_member(interaction.user, interaction.channel_id)
+        notification_agents.append(agent)
+    else:
+        existing_agent.add_member(interaction.user, interaction.channel_id)
+
+def check_series_season_downloaded(series_info: dict, tracked_season: int) -> bool:
+    series = sonarr.get_series(id_=series_info["tvdbId"], tvdb=True)
+    if len(series) > 0:
+        selected_season = next((season for season in series[0]["seasons"] if season["seasonNumber"] == tracked_season), None)
+        if selected_season and selected_season.get("statistics") and selected_season["statistics"]["percentOfEpisodes"] == 100:
+            return True
+
+    return False
+
 class RequestSeasonsButton(discord.ui.Button):
-    def __init__(self, series, already_monitored, seasons, pretty_seasons,quality_profile, root_folder_path):
+    def __init__(self, series, already_monitored, seasons, pretty_seasons,quality_profile, root_folder_path, embed):
         self.series = series
         self.seasons = seasons
         self.pretty_seasons = pretty_seasons
         self.already_monitored = already_monitored
         self.quality_profile = quality_profile
         self.root_folder_path = root_folder_path
+        self.embed = embed
         super().__init__(label='Request', style=discord.ButtonStyle.primary)
 
     async def callback(self, interaction: discord.Interaction):
@@ -50,19 +74,25 @@ class RequestSeasonsButton(discord.ui.Button):
             sonarr.upd_series(self.series)
         else:
             sonarr.add_series(self.series, quality_profile_id, 1, self.root_folder_path, ignore_episodes_with_files=True, search_for_missing_episodes=True)
-        
+
+        # create notification agents for seasons that aren't already downloaded
+        for season in self.series["seasons"]:
+            if season["monitored"]:
+                if not check_series_season_downloaded(self.series, season["seasonNumber"]):
+                    create_notification_agent(self.series, season["seasonNumber"], self.embed, interaction)
+
         self.label = "Requested"
         self.disabled = True
 
-        await interaction.message.edit(content=f"Successfully requested {self.pretty_seasons} from {self.series['title']}!", view=self.view)
+        await interaction.message.edit(content=f"Successfully requested {self.pretty_seasons} from **{self.series['title']}**!", view=self.view)
 
 class SeasonSelect(discord.ui.Select):
-    def __init__(self, series, already_monitored, quality_profile, root_folder_path):
+    def __init__(self, series, already_monitored, quality_profile, root_folder_path, embed):
         self.series = series
         self.quality_profile = quality_profile
         self.root_folder_path = root_folder_path
         self.already_monitored = already_monitored
-
+        self.embed = embed
         self.seasons = series["seasons"]
         seasons = []
         season_count = 1
@@ -92,7 +122,7 @@ class SeasonSelect(discord.ui.Select):
         else:
             pretty_seasons = "all seasons"
 
-        button = RequestSeasonsButton(self.series, self.already_monitored, selected_seasons, pretty_seasons, self.quality_profile, self.root_folder_path)
+        button = RequestSeasonsButton(self.series, self.already_monitored, selected_seasons, pretty_seasons, self.quality_profile, self.root_folder_path, self.embed)
         for item in list(self.view.children):
             if isinstance(item, discord.ui.Button):
                 self.view.remove_item(item)
@@ -100,7 +130,7 @@ class SeasonSelect(discord.ui.Select):
         self.view.add_item(button)
 
         # TODO: handle seasons that are already monitored
-        await interaction.response.edit_message(content=f"Would you like to request {pretty_seasons} from {self.series['title']}?", view=self.view)
+        await interaction.response.edit_message(content=f"Would you like to request {pretty_seasons} from **{self.series['title']}**?", view=self.view)
 
 class SelectMenu(discord.ui.Select):
     def __init__(self, series, quality_profile, root_folder_path):
@@ -126,7 +156,7 @@ class SelectMenu(discord.ui.Select):
                 description = selected_series_info["overview"]
 
         embed = discord.Embed(
-            title=f"{selected_series_info['title']} ({selected_series_info['year']})",
+            title=f"{selected_series_info['title']}",
             url=f"https://www.theseriesdb.org/series/{selected_series_info['tvdbId']}",
             description=description,
             color=0x3498db
@@ -145,9 +175,9 @@ class SelectMenu(discord.ui.Select):
 
         selected_series_info["seasons"] = [season for season in selected_series_info["seasons"] if season["seasonNumber"] != 0]
 
-        self.view.add_item(SeasonSelect(selected_series_info, series_already_monitored(selected_series_info["tvdbId"]), self.quality_profile, self.root_folder_path))
+        self.view.add_item(SeasonSelect(selected_series_info, series_already_monitored(selected_series_info["tvdbId"]), self.quality_profile, self.root_folder_path, embed))
 
-        await interaction.response.edit_message(content=f"{selected_series_info['title']} is not downloaded or requested. Would you like to request it?", embed=embed, view=self.view)
+        await interaction.response.edit_message(content=f"**{selected_series_info['title']}** is not downloaded or requested. Would you like to request it?", embed=embed, view=self.view)
             
 
 class SeriesSelectView(discord.ui.View):

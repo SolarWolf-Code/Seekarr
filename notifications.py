@@ -1,5 +1,8 @@
-import discord
 from dataclasses import dataclass, field
+from typing import Optional
+
+import discord
+
 
 @dataclass
 class NotificationAgent:
@@ -7,6 +10,7 @@ class NotificationAgent:
     notified_members: dict[str, list[discord.Member]] = field(default_factory=dict)
     embed: discord.Embed = None
     info: dict = None
+    season: Optional[int] = None
 
     def add_member(self, member: discord.Member, channel_id: int):
         if channel_id not in self.notified_members:

@@ -40,6 +40,6 @@ export SONARR_COMMAND_1=request-tv,/media/tv,4K
 ```
 
 ## TODO
-- Notifications for completed items
 - Add `In Theaters` field to embed
-- Add check for if all seasons are already monitored
+- If there is a singe result, skip the selection menu
+    - this also goes for seasons

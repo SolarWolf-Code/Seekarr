@@ -1,13 +1,14 @@
+import asyncio
 import os
 from dataclasses import dataclass
-import asyncio
 
 import discord
 from pyarr import RadarrAPI, SonarrAPI
 
-from radarr import MovieSelectView, get_movie
-from sonarr import SeriesSelectView, get_series
-from utils import notification_agents
+from notifications import notification_agents
+from radarr import MovieSelectView, check_movie_downloaded, get_movie
+from sonarr import SeriesSelectView, check_series_season_downloaded, get_series
+
 
 @dataclass
 class Command:
@@ -24,21 +25,12 @@ guild_id = None
 radarr = None
 sonarr = None
 
-def check_movie_downloaded(movie_info: dict) -> bool:
-    movie = radarr.get_movie(id_=movie_info["tmdbId"], tmdb=True)[0]
-    if movie["hasFile"]:
-        return True
-
-    return False
-
-
 async def check_downloads():
     while True:
         print(f"Checking downloads | {len(notification_agents)}")
         await asyncio.sleep(5)
         for agent in notification_agents:
             if agent.instance_type == "Radarr":
-                print(f"Checking {agent.info['title']}")
                 if check_movie_downloaded(agent.info):
                     # send message to each channel. include all users in message for that given channel
                     for channel_id, members in agent.notified_members.items():
@@ -49,8 +41,14 @@ async def check_downloads():
                     notification_agents.remove(agent)
 
             elif agent.instance_type == "Sonarr":
-                # TODO: check if series is downloaded
-                pass
+                if check_series_season_downloaded(agent.info, agent.season):
+                    # send message to each channel. include all users in message for that given channel
+                    for channel_id, members in agent.notified_members.items():
+                        channel = client.get_channel(channel_id)
+                        members_to_mention = " ".join([member.mention for member in members])
+                        await channel.send(content=f"{members_to_mention} {agent.info['title']} Season {agent.season} has finished downloading!", embed=agent.embed)
+
+                    notification_agents.remove(agent)
 
 def sync_commands(command_type: str, command: list, config: dict[str, str]):
     global sonarr
@@ -81,7 +79,6 @@ def sync_commands(command_type: str, command: list, config: dict[str, str]):
         tree.command(name=command.name, guild=discord.Object(id=guild_id))(command_func)
     else:
         tree.command(name=command.name)(command_func)
-
 
 @client.event
 async def on_ready():

@@ -92,9 +92,8 @@ class SelectMenu(discord.ui.Select):
             if agent:
                 if interaction.user not in agent.notified_members[interaction.channel_id]:
                     agent.add_member(interaction.user, interaction.channel_id)
-                    await interaction.response.edit_message(content=f"{selected_movie_info['title']} is already requested. You will be notified when it is available.", embed=embed, view=self.view)
-                else:
-                    await interaction.response.edit_message(content=f"{selected_movie_info['title']} is already requested. You will be notified when it is available.", embed=embed, view=self.view)
+
+                await interaction.response.edit_message(content=f"{selected_movie_info['title']} is already requested. You will be notified when it is available.", embed=embed, view=self.view)
 
             else:
                 # this means it was already requests but the bot likely lost connection and the notification agent was removed.

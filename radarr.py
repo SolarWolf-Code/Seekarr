@@ -25,7 +25,7 @@ class RequestButton(discord.ui.Button):
         quality_profiles = radarr.get_quality_profile()
         quality_profile_id = int(next(profile["id"] for profile in quality_profiles if profile["name"] == self.quality_profile))
 
-        radarr.add_movie(self.movie, quality_profile_id=quality_profile_id, root_dir=self.root_folder_path, search_for_movie=False)
+        radarr.add_movie(self.movie, quality_profile_id=quality_profile_id, root_dir=self.root_folder_path, search_for_movie=True)
 
         self.label = "Requested"
         self.disabled = True

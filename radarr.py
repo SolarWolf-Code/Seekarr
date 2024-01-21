@@ -78,8 +78,18 @@ class SelectMenu(discord.ui.Select):
             color=0x3498db
         )
         # <t:1705463340:f>
-        embed.set_thumbnail(url="https://i.imgur.com/44ueTES.png")
+        embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Tmdb.new.logo.svg/2560px-Tmdb.new.logo.svg.png")
         embed.set_footer(text=f"Powered by Seekarr")
+
+        # add ratings
+        if selected_movie_info.get("ratings"):
+            if selected_movie_info["ratings"].get("rottenTomatoes"):
+                embed.add_field(name="<:rottentomatoes:1198430940054159491>", value=f"{selected_movie_info['ratings']['rottenTomatoes']['value']}%", inline=True)
+            if selected_movie_info["ratings"].get("imdb"):
+                embed.add_field(name="<:imdb:1198433037172617346>", value=f"{selected_movie_info['ratings']['imdb']['value']:.2f}/10", inline=True)
+            if selected_movie_info["ratings"].get("tmdb"):
+                embed.add_field(name="<:tmdb:1198437511970684978>", value=f"{selected_movie_info['ratings']['tmdb']['value']:.2f}/10", inline=True)
+
 
         if selected_movie_info.get("remotePoster"):
             embed.set_image(url=selected_movie_info["remotePoster"])
@@ -103,7 +113,6 @@ class SelectMenu(discord.ui.Select):
                     agent.add_member(interaction.user, interaction.channel_id)
 
                 await interaction.response.edit_message(content=f"**{selected_movie_info['title']}** is already requested. You will be notified when it is available.", embed=embed, view=self.view)
-
             else:
                 # this means it was already requests but the bot likely lost connection and the notification agent was removed.
                 agent = NotificationAgent(instance_type="Radarr")

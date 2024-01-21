@@ -12,9 +12,10 @@ def get_movie(title: str, radarr_instance: RadarrAPI):
     return movies[:25]
 
 def check_movie_downloaded(movie_info: dict) -> bool:
-    movie = radarr.get_movie(id_=movie_info["tmdbId"], tmdb=True)[0]
-    if movie["hasFile"]:
-        return True
+    movie = radarr.get_movie(id_=movie_info["tmdbId"], tmdb=True)
+    if len(movie) > 0:
+        if movie[0]["hasFile"]:
+            return True
 
     return False
 

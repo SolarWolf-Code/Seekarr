@@ -43,3 +43,5 @@ export SONARR_COMMAND_1=request-tv,/media/tv,4K
 - Add `In Theaters` field to embed
 - If there is a singe result, skip the selection menu
     - this also goes for seasons
+- ping command
+- version commmad

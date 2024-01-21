@@ -1,5 +1,6 @@
 import discord
 from pyarr import RadarrAPI
+import datetime
 
 from notifications import NotificationAgent, notification_agents
 
@@ -71,24 +72,52 @@ class SelectMenu(discord.ui.Select):
             else:
                 description = selected_movie_info["overview"]
 
+
         embed = discord.Embed(
             title=f"{selected_movie_info['title']}",
             url=f"https://www.themoviedb.org/movie/{selected_movie_info['tmdbId']}",
             description=description,
             color=0x3498db
         )
-        # <t:1705463340:f>
+
         embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Tmdb.new.logo.svg/2560px-Tmdb.new.logo.svg.png")
         embed.set_footer(text=f"Powered by Seekarr")
 
+
+        row_count = 0
+        if selected_movie_info.get("inCinemas"):
+            converted_date = datetime.datetime.strptime(selected_movie_info["inCinemas"], "%Y-%m-%dT%H:%M:%SZ")
+            embed.add_field(name="__In Theaters:__", value=f"{converted_date.strftime('%B %d, %Y')}", inline=True)
+            row_count += 1
+        if selected_movie_info.get("physicalRelease"):
+            converted_date = datetime.datetime.strptime(selected_movie_info["physicalRelease"], "%Y-%m-%dT%H:%M:%SZ")
+            embed.add_field(name="__Physical Release:__", value=f"{converted_date.strftime('%B %d, %Y')}", inline=True)
+            row_count += 1
+        if selected_movie_info.get("digitalRelease"):
+            converted_date = datetime.datetime.strptime(selected_movie_info["digitalRelease"], "%Y-%m-%dT%H:%M:%SZ")
+            embed.add_field(name="__Digital Release:__", value=f"{converted_date.strftime('%B %d, %Y')}", inline=True)
+            row_count += 1
+        
+        for _ in range(3 - row_count):
+            # fills the end of the row with empty fields
+            embed.add_field(name="\u200b", value="\u200b", inline=True)
+
         # add ratings
+        row_count = 0
         if selected_movie_info.get("ratings"):
             if selected_movie_info["ratings"].get("rottenTomatoes"):
                 embed.add_field(name="<:rottentomatoes:1198430940054159491>", value=f"{selected_movie_info['ratings']['rottenTomatoes']['value']}%", inline=True)
+                row_count += 1
             if selected_movie_info["ratings"].get("imdb"):
                 embed.add_field(name="<:imdb:1198433037172617346>", value=f"{selected_movie_info['ratings']['imdb']['value']:.2f}/10", inline=True)
+                row_count += 1
             if selected_movie_info["ratings"].get("tmdb"):
                 embed.add_field(name="<:tmdb:1198437511970684978>", value=f"{selected_movie_info['ratings']['tmdb']['value']:.2f}/10", inline=True)
+                row_count += 1
+
+        if row_count != 0:
+            for _ in range(3 - row_count):
+                embed.add_field(name="\u200b", value="\u200b", inline=True)
 
 
         if selected_movie_info.get("remotePoster"):

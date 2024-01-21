@@ -17,6 +17,7 @@ class Command:
     qualityprofile: str
 
 
+VERSION = "1.0.0"
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
 tree = discord.app_commands.CommandTree(client)
@@ -36,7 +37,7 @@ async def check_downloads():
                     for channel_id, members in agent.notified_members.items():
                         channel = client.get_channel(channel_id)
                         members_to_mention = " ".join([member.mention for member in members])
-                        await channel.send(content=f"{members_to_mention} {agent.info['title']} has finished downloading!", embed=agent.embed)
+                        await channel.send(content=f"{members_to_mention} **{agent.info['title']}** has finished downloading!", embed=agent.embed)
 
                     notification_agents.remove(agent)
 
@@ -46,7 +47,7 @@ async def check_downloads():
                     for channel_id, members in agent.notified_members.items():
                         channel = client.get_channel(channel_id)
                         members_to_mention = " ".join([member.mention for member in members])
-                        await channel.send(content=f"{members_to_mention} {agent.info['title']} Season {agent.season} has finished downloading!", embed=agent.embed)
+                        await channel.send(content=f"{members_to_mention} **{agent.info['title']} Season {agent.season}** has finished downloading!", embed=agent.embed)
 
                     notification_agents.remove(agent)
 
@@ -74,11 +75,12 @@ def sync_commands(command_type: str, command: list, config: dict[str, str]):
         else:
             await interaction.response.send_message(f"No item found with the name \"{title}\". Please make sure you spelled it correctly.")
 
-    print(f"Added command: {command.name}")
     if guild_id:
         tree.command(name=command.name, guild=discord.Object(id=guild_id))(command_func)
     else:
         tree.command(name=command.name)(command_func)
+
+
 
 @client.event
 async def on_ready():
@@ -91,6 +93,16 @@ async def on_ready():
     asyncio.create_task(check_downloads())
 
     print("Seekarr is online!")
+
+    # print all commands
+    if not guild_id:
+        commands = await tree.fetch_commands()
+    else:
+        commands = await tree.fetch_commands(guild=discord.Object(id=guild_id))
+
+    for command in commands:
+        print(f"Added command: {command.name}")
+
 
 def add_commands(command_type: str):
     command_envs = [env for env in os.environ if env.startswith(f"{command_type}_")]
@@ -108,6 +120,22 @@ def add_commands(command_type: str):
         else:
             raise Exception(f"No {command_type} commands found. Please set at least one {command_type} command.\nExample: {command_type}_COMMAND_TV request-media,/media,Any")
 
+def add_base_commands():
+    """Adds ping and version commands"""
+    async def ping_command(interaction):
+        # sends pong and latency
+        await interaction.response.send_message(f":ping_pong: Pong! {round(client.latency * 1000)}ms")
+
+    async def version_command(interaction):
+        await interaction.response.send_message(f"Seekarr v{VERSION}")
+
+    if guild_id:
+        tree.command(name="ping", guild=discord.Object(id=guild_id))(ping_command)
+        tree.command(name="version", guild=discord.Object(id=guild_id))(version_command)
+    else:
+        tree.command(name="ping")(ping_command)
+        tree.command(name="version")(version_command)
+
 if __name__ == "__main__":
     try:
         discord_token = os.environ["DISCORD_TOKEN"]
@@ -117,6 +145,7 @@ if __name__ == "__main__":
     if os.environ.get("GUILD_ID"):
         guild_id = int(os.environ["GUILD_ID"])
 
+    add_base_commands()
     add_commands("SONARR")
     add_commands("RADARR")
 

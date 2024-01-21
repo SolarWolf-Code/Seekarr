@@ -1,4 +1,5 @@
 import discord
+import datetime
 from pyarr import SonarrAPI
 
 from notifications import NotificationAgent, notification_agents
@@ -163,6 +164,14 @@ class SelectMenu(discord.ui.Select):
         )
         embed.set_thumbnail(url="https://thetvdb.com/images/logo.png")
         embed.set_footer(text=f"Powered by Seekarr")
+
+        # add firstAired and lastAired to embed
+        if selected_series_info.get("firstAired"):
+            converted_date = datetime.datetime.strptime(selected_series_info["firstAired"], "%Y-%m-%dT%H:%M:%SZ")
+            embed.add_field(name="__Airs:__", value=converted_date.strftime("%B %d, %Y"), inline=True)
+        if selected_series_info.get("lastAired"):
+            converted_date = datetime.datetime.strptime(selected_series_info["lastAired"], "%Y-%m-%dT%H:%M:%SZ")
+            embed.add_field(name="__Ends:__", value=converted_date.strftime("%B %d, %Y"), inline=True)
 
         if selected_series_info.get("remotePoster"):
             embed.set_image(url=selected_series_info["remotePoster"])

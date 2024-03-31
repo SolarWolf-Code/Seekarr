@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 from dataclasses import dataclass
 
@@ -9,6 +10,10 @@ from notifications import notification_agents
 from radarr import MovieSelectView, check_movie_downloaded, get_movie
 from sonarr import SeriesSelectView, check_series_season_downloaded, get_series
 
+
+# setup logging
+LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
 @dataclass
 class Command:
@@ -28,7 +33,7 @@ sonarr = None
 
 async def check_downloads():
     while True:
-        print(f"Checking downloads | {len(notification_agents)}")
+        logging.info(f"Checking downloads | {len(notification_agents)}")
         await asyncio.sleep(5)
         for agent in notification_agents:
             if agent.instance_type == "Radarr":
@@ -92,7 +97,7 @@ async def on_ready():
     # create new task to check downloads
     asyncio.create_task(check_downloads())
 
-    print("Seekarr is online!")
+    logging.info("Seekarr is online!")
 
     # print all commands
     if not guild_id:
@@ -101,7 +106,7 @@ async def on_ready():
         commands = await tree.fetch_commands(guild=discord.Object(id=guild_id))
 
     for command in commands:
-        print(f"Added command: {command.name}")
+        logging.info(f"Added command: {command.name}")
 
 
 def add_commands(command_type: str):
